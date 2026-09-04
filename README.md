@@ -7,6 +7,7 @@ We believe our package will benefit your research.
 
 - [PaCS-Toolkit](#pacs-toolkit)
   - [Document](#document)
+  - [Supported MD engines](#supported-md-engines)
   - [Quick install](#quick-install)
   - [Example command](#example-command)
   - [Citation](#citation)
@@ -15,6 +16,12 @@ We believe our package will benefit your research.
 
 ## Document
 - The documentation of PaCS-Toolkit is [here](https://kitaolab.github.io/PaCS-Toolkit/).
+
+## Supported MD engines
+- AMBER
+- GROMACS
+- NAMD
+- Desmond ⚠️ *experimental* — the simulator/exporter adapter is implemented and its Schrodinger API calls are verified against the official docs, but the `multisim` invocation and job-script templates ([`jobscripts/desmond/`](jobscripts/desmond/)) still need validation against a real run before being considered production-ready. A Maestro GUI panel ([`maestro_plugin/pacs_desmond_panel.py`](maestro_plugin/pacs_desmond_panel.py)) is available to generate `input.toml` from inside Maestro. Feedback and bug reports welcome.
 
 ## Quick install
 
