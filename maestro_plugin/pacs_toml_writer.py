@@ -6,6 +6,62 @@ from typing import Any, Dict, Optional
 SUPPORTED_ANALYZER_TYPES = ("target", "rmsd")
 
 
+_SECTION_KEYS = [
+    (
+        "basic",
+        [
+            "trial",
+            "max_cycle",
+            "n_replica",
+            "n_parallel",
+            "centering",
+            "centering_selection",
+            "working_dir",
+        ],
+    ),
+    (
+        "simulator",
+        [
+            "simulator",
+            "structure",
+            "topology",
+            "mdconf",
+            "msj_file",
+            "trajectory_extension",
+            "desmond_host",
+            "desmond_maxjob",
+            "desmond_lic",
+        ],
+    ),
+    (
+        "analyzer",
+        ["type", "threshold", "analyzer", "reference", "selection1", "selection2"],
+    ),
+    ("postprocess", ["rmmol", "rmfile"]),
+]
+
+
+def _format_value(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    return f'"{value}"'
+
+
+def settings_dict_to_toml(settings: Dict[str, Any]) -> str:
+    lines = []
+    for header, keys in _SECTION_KEYS:
+        present = [k for k in keys if k in settings]
+        if not present:
+            continue
+        lines.append(f"## {header}")
+        for key in present:
+            lines.append(f"{key} = {_format_value(settings[key])}")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def build_settings_dict(
     *,
     structure_cms: str,
