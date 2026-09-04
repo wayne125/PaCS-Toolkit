@@ -1,5 +1,7 @@
 import unittest
 
+import tomli
+
 from maestro_plugin.pacs_toml_writer import build_settings_dict, settings_dict_to_toml
 
 
@@ -87,6 +89,31 @@ class TestSettingsDictToToml(unittest.TestCase):
         toml_text = settings_dict_to_toml(settings)
         self.assertIn("n_replica = 20", toml_text)
         self.assertIn("centering = true", toml_text)
+
+
+class TestRoundTrip(unittest.TestCase):
+    def test_round_trip_preserves_values(self):
+        settings = build_settings_dict(
+            structure_cms="system.cms",
+            msj_file="production.msj",
+            mdconf="production.cfg",
+            working_dir="./run1",
+            analyzer_type="target",
+            threshold=0.05,
+            reference="ref.pdb",
+            selection1="protein",
+            selection2="protein",
+            n_replica=20,
+            max_cycle=100,
+            desmond_lic="DESMOND_GPGPU:16",
+        )
+        toml_text = settings_dict_to_toml(settings)
+        parsed = tomli.loads(toml_text)
+        self.assertEqual(parsed["simulator"], "desmond")
+        self.assertEqual(parsed["n_replica"], 20)
+        self.assertEqual(parsed["max_cycle"], 100)
+        self.assertEqual(parsed["threshold"], 0.05)
+        self.assertEqual(parsed["desmond_lic"], "DESMOND_GPGPU:16")
 
 
 if __name__ == "__main__":
