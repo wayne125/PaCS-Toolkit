@@ -26,7 +26,10 @@ class EdgeExpansion(SuperAnalyzer):
             settings.reference = f"{settings.each_replica(_cycle=0, _replica=1)}/prd{settings.trajectory_extension}"  # NOQA: B950
 
         if cycle == 0:
-            self.pca(settings, cycle, replica)
+            if settings.analyzer == "desmond":
+                self.pca_desmond(settings, cycle, replica)
+            else:
+                self.pca(settings, cycle, replica)
 
         if settings.analyzer == "mdtraj":
             ret = self.cal_by_mdtraj(settings, cycle, replica)
@@ -34,6 +37,8 @@ class EdgeExpansion(SuperAnalyzer):
             ret = self.cal_by_gmx(settings, cycle, replica)
         elif settings.analyzer == "cpptraj":
             ret = self.cal_by_cpptraj(settings, cycle, replica)
+        elif settings.analyzer == "desmond":
+            ret = self.cal_by_desmond(settings, cycle, replica)
         else:
             raise NotImplementedError
         queue.put(ret)
@@ -126,3 +131,59 @@ class EdgeExpansion(SuperAnalyzer):
         self, settings: MDsettings, cycle: int, replica: int
     ) -> List[float]:
         raise NotImplementedError
+
+    def pca_desmond(self, settings: MDsettings, cycle: int, replica: int) -> None:
+        # Fits a 4-mode PCA model via Schrodinger's own prody-derived EDA/
+        # Ensemble classes, confirmed available at
+        # schrodinger.trajectory.prody.{ensemble.Ensemble, pca.EDA} and real-
+        # usable per Schrodinger's own trj_essential_dynamics.py script. The
+        # fitted EDA object (not a transformed-coordinates array) is pickled,
+        # since later cycles' cal_by_desmond needs its modes/getArray(), the
+        # same role sklearn's fitted PCA object plays in cal_by_mdtraj's pca().
+        # Note: selection3 (fit atoms) is unused here - Ensemble.iterpose() does
+        # its own internal superposition, so we use selection4 directly.
+        import pickle
+
+        from schrodinger.application.desmond.packages import traj_util
+        from schrodinger.trajectory.prody.ensemble import Ensemble
+        from schrodinger.trajectory.prody.pca import EDA
+
+        if settings.reference is None:
+            settings.reference = f"{settings.each_replica(_cycle=0, _replica=1)}/prd-out{settings.structure_extension}"
+
+        _, cms_model, tr = traj_util.read_cms_and_traj(str(settings.reference))
+        ensemble = Ensemble(cms_model, tr, settings.selection4)
+        ensemble.iterpose()
+        eda = EDA()
+        eda.buildCovariance(ensemble)
+        eda.calcModes(n_modes=4)
+
+        with open(f"{settings.each_replica(_cycle=0, _replica=1)}/pca.pkl", "wb") as f:
+            pickle.dump(eda, f)
+
+    def cal_by_desmond(
+        self, settings: MDsettings, cycle: int, replica: int
+    ) -> List[float]:
+        import pickle
+
+        from schrodinger.application.desmond.packages import traj_util
+        from schrodinger.trajectory.prody.ensemble import Ensemble
+
+        dir = settings.each_replica(_cycle=cycle, _replica=replica)
+        cms_path = f"{dir}/prd-out{settings.structure_extension}"
+        _, cms_model, tr = traj_util.read_cms_and_traj(cms_path)
+
+        with open(
+            f"{settings.each_replica(_cycle=0, _replica=1)}/pca.pkl", "rb"
+        ) as f:
+            eda = pickle.load(f)
+
+        ensemble = Ensemble(cms_model, tr, settings.selection2)
+        ensemble.iterpose()
+        modes = eda[:4]
+        deviations = ensemble.getDeviations()
+        deviations = deviations.reshape(
+            (deviations.shape[0], deviations.shape[1] * 3)
+        )
+        projections = np.dot(deviations, modes.getArray())
+        return projections

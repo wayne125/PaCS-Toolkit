@@ -32,6 +32,8 @@ class Dissociation(SuperAnalyzer):
             ret = self.cal_by_gmx(settings, cycle, replica)
         elif settings.analyzer == "cpptraj":
             ret = self.cal_by_cpptraj(settings, cycle, replica)
+        elif settings.analyzer == "desmond":
+            ret = self.cal_by_desmond(settings, cycle, replica)
         else:
             raise NotImplementedError
         queue.put(ret)
@@ -155,3 +157,27 @@ class Dissociation(SuperAnalyzer):
 
         dists = np.loadtxt(f"{dir}/interCOM.xvg", dtype="float32")[:, 1]
         return dists
+
+    def cal_by_desmond(
+        self, settings: MDsettings, cycle: int, replica: int
+    ) -> List[float]:
+        # Uses Schrodinger's own analysis.Com + analysis.analyze, confirmed
+        # available at schrodinger.application.desmond.packages.analysis.Com
+        # (ASL-based center-of-mass analyzer; analyze() runs it over every
+        # trajectory frame - same analyze() helper used by target.py's
+        # cal_by_desmond for RMSD). Matches cal_by_mdtraj's exact CV formula:
+        # Euclidean distance between selection1's and selection2's COM.
+        from schrodinger.application.desmond.packages import analysis, traj_util
+
+        dir = settings.each_replica(_cycle=cycle, _replica=replica)
+        cms_path = f"{dir}/prd-out{settings.structure_extension}"
+        msys_model, cms_model, tr = traj_util.read_cms_and_traj(cms_path)
+
+        com1_analyzer = analysis.Com(msys_model, cms_model, asl=settings.selection1)
+        com2_analyzer = analysis.Com(msys_model, cms_model, asl=settings.selection2)
+        com1, com2 = analysis.analyze(tr, com1_analyzer, com2_analyzer)
+
+        dist = np.array(
+            [np.linalg.norm(np.array(c1) - np.array(c2)) for c1, c2 in zip(com1, com2)]
+        )
+        return dist
