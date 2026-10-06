@@ -1,0 +1,31 @@
+## basic
+trial = 1
+max_cycle = 30                    # start smaller (e.g. 3) to validate your setup before committing GPU-hours
+n_replica = 50
+n_parallel = 1                    # single GPU: higher values just queue, don't speed anything up
+centering = false                 # not implemented for desmond - see README.md point 9
+working_dir = "/home/you/pacsmd_run"   # must be a space-free path - see README.md point 3
+
+## simulator
+simulator = "desmond"
+structure = "/home/you/pacsmd_run/start.cms"    # fully equilibrated structure - see README.md point 5
+topology = "/home/you/pacsmd_run/start.cms"     # the .cms serves as both structure and topology for desmond
+mdconf = "jobscripts/desmond/production.cfg"    # may live on a space-containing path - see README.md point 3
+msj_file = "jobscripts/desmond/production.msj"
+trajectory_extension = ".dtr"
+desmond_host = "localhost"
+desmond_maxjob = 1
+# desmond_lic = "DESMOND_GPGPU:16"              # optional, only if your license setup needs it explicitly
+cmd_serial = "$SCHRODINGER/utilities/multisim"
+
+## analyzer
+type = "target"                                  # or "rmsd" - see docs/src/mdrun/inputfile.md
+threshold = 0.1                                  # tune to your system; CVs are in Angstrom for desmond (not nm)
+analyzer = "desmond"
+reference = "/home/you/pacsmd_run/reference.cms"
+selection1 = "protein and backbone"               # ASL, not mdtraj/gromacs selection syntax
+selection2 = "protein and backbone"
+
+## postprocess
+rmmol = false
+rmfile = false

@@ -98,6 +98,15 @@ def rmfile(settings: MDsettings, cycle: int) -> None:
 
             continue
 
+        # desmond
+        elif settings.simulator == "desmond":
+            # Remove the multisim job log (prd.log) - not needed after export.
+            # Keep prd-out.cms and the prd_trj/ trajectory directory: the
+            # exporter (pacs/mdrun/exporter/desmond.py) reads both via
+            # traj_util.read_cms_and_traj for the next cycle's frame export.
+            run_rm(f"{dir}/prd.log")
+            continue
+
     # LOGGER.info(f"rmfile completed successfully in cycle{cycle:03}")
     record_finished(settings, cycle)
 

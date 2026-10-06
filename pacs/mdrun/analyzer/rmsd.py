@@ -27,6 +27,8 @@ class RMSD(SuperAnalyzer):
             ret = self.cal_by_gmx(settings, cycle, replica)
         elif settings.analyzer == "cpptraj":
             ret = self.cal_by_cpptraj(settings, cycle, replica)
+        elif settings.analyzer == "desmond":
+            ret = self.cal_by_desmond(settings, cycle, replica)
         else:
             raise NotImplementedError
         queue.put(ret)
@@ -164,3 +166,36 @@ class RMSD(SuperAnalyzer):
 
         rmsd = np.loadtxt(f"{dir}/rms.xvg", dtype="float32")[:, 1]
         return rmsd
+
+    def cal_by_desmond(
+        self, settings: MDsettings, cycle: int, replica: int
+    ) -> List[float]:
+        # See target.py's cal_by_desmond for the full rationale: uses
+        # Schrodinger's own analysis.RMSD/analyze, verified to match
+        # cal_by_mdtraj's exact RMSD formula against a real trajectory.
+        from schrodinger.application.desmond.packages import analysis, traj_util
+        from schrodinger.structure import StructureReader
+        from schrodinger.structutils.analyze import evaluate_asl
+
+        dir = settings.each_replica(_cycle=cycle, _replica=replica)
+        cms_path = f"{dir}/prd-out{settings.structure_extension}"
+        msys_model, cms_model, tr = traj_util.read_cms_and_traj(cms_path)
+
+        fit_aids = cms_model.select_atom(settings.selection1)
+        aids = cms_model.select_atom(settings.selection2)
+
+        ref_st = next(StructureReader(str(settings.reference)))
+        fit_ref_aids = evaluate_asl(ref_st, settings.selection3)
+        ref_aids = evaluate_asl(ref_st, settings.selection4)
+        fit_ref_pos = np.array([ref_st.atom[i].xyz for i in fit_ref_aids])
+        ref_pos = np.array([ref_st.atom[i].xyz for i in ref_aids])
+
+        rmsd_analyzer = analysis.RMSD(
+            msys_model,
+            cms_model,
+            aids,
+            ref_pos,
+            fit_aids=fit_aids,
+            fit_ref_pos=fit_ref_pos,
+        )
+        return np.array(analysis.analyze(tr, rmsd_analyzer))

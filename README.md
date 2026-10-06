@@ -21,7 +21,7 @@ We believe our package will benefit your research.
 - AMBER
 - GROMACS
 - NAMD
-- Desmond ⚠️ *experimental* — the simulator/exporter adapter is implemented and its Schrodinger API calls are verified against the official docs, but the `multisim` invocation and job-script templates ([`jobscripts/desmond/`](jobscripts/desmond/)) still need validation against a real run before being considered production-ready. A Maestro GUI panel ([`maestro_plugin/pacs_desmond_panel.py`](maestro_plugin/pacs_desmond_panel.py)) is available to generate `input.toml` from inside Maestro. Feedback and bug reports welcome.
+- Desmond ⚠️ *experimental* — simulator, exporter, and analyzer are implemented and verified end-to-end against real Schrodinger Desmond jobs, including a real multi-cycle `pacs mdrun`. See [`jobscripts/desmond/README.md`](jobscripts/desmond/README.md) for required setup steps (running under `$SCHRODINGER/run python3`, a space-free `structure`/`working_dir`, a properly equilibrated starting structure, etc.) and [`jobscripts/desmond/input.toml`](jobscripts/desmond/input.toml) for a worked example. A Maestro GUI panel ([`maestro_plugin/pacs_desmond_panel.py`](maestro_plugin/pacs_desmond_panel.py)) is available to generate `input.toml` from inside Maestro. Feedback and bug reports welcome.
 
 ## Quick install
 

@@ -11,6 +11,7 @@
     - [Gromacs](#gromacs)
     - [Amber](#amber)
     - [NAMD](#namd)
+    - [Desmond](#desmond)
   - [analyzer option](#analyzer-option)
     - [Target](#target)
     - [RMSD](#rmsd)
@@ -68,11 +69,12 @@ rmfile = true                     # Whether rmfile is executed after trial
 
 ## simulator option
 
-| analyzer \ simulator | gromacs | amber | namd |
-| -------------------- | ------- | ----- | ---- |
-| mdtraj               | o       | o     | o    |
-| gromacs              | o       | x     | x    |
-| cpptraj              | x       | o     | x    |
+| analyzer \ simulator | gromacs | amber | namd | desmond |
+| -------------------- | ------- | ----- | ---- | ------- |
+| mdtraj               | o       | o     | o    | x       |
+| gromacs              | o       | x     | x    | x       |
+| cpptraj              | x       | o     | x    | x       |
+| desmond              | x       | x     | x    | o       |
 
 ### Gromacs
 <details><summary> click here </summary>
@@ -191,6 +193,50 @@ trajectory_extension = ".dcd"           # Trajectory file extension. ("." is nec
 ```
 
 
+### Desmond
+⚠️ *experimental* - see [`jobscripts/desmond/README.md`](https://github.com/Kitaolab/PaCS-Toolkit/tree/main/jobscripts/desmond)
+for required setup (must run under `$SCHRODINGER/run python3`, space-free
+`structure`/`working_dir`, a properly *equilibrated* starting structure,
+etc.) before using this.
+
+<details><summary> click here </summary>
+
+- **simulator: str, required**
+  - Software used inside PaCS-MD. "desmond"
+- **cmd_serial: str, required**
+  - Must be `"$SCHRODINGER/utilities/multisim"`.
+- **structure: str, required**
+  - A fully equilibrated Desmond `.cms` file. Also used as `topology` (the `.cms` serves both roles).
+- **topology: str, required**
+  - Same file as `structure` for Desmond.
+- **mdconf: str, required**
+  - Desmond `.cfg` parameter file for the production stage.
+- **msj_file: str, (required if Desmond)**
+  - Desmond `.msj` job script for the production stage. Its `simulate` block must reference `mdconf` via `cfg_file = "..."`.
+- **desmond_host: str, default="localhost"**
+  - Host passed to multisim's `-HOST` flag.
+- **desmond_maxjob: int, default=1**
+  - Passed to multisim's `-maxjob` flag.
+- **desmond_lic: str, optional**
+  - Desmond license class, e.g. "DESMOND_GPGPU:16".
+- **trajectory_extension: str, required**
+  - Must be ".dtr".
+
+</details>
+
+```toml
+simulator = "desmond"                              # Software used inside PaCS-MD
+cmd_serial = "$SCHRODINGER/utilities/multisim"     # Fixed for desmond
+structure = "/work/start.cms"                      # Equilibrated structure - also used as topology
+topology = "/work/start.cms"                       # Same file as structure, for desmond
+mdconf = "/work/production.cfg"                    # Desmond production .cfg
+msj_file = "/work/production.msj"                  # Desmond production .msj (cfg_file must match mdconf)
+desmond_host = "localhost"                         # Host for multisim -HOST
+desmond_maxjob = 1                                 # multisim -maxjob
+trajectory_extension = ".dtr"                      # Trajectory file extension. ("." is necessary)
+```
+
+
 ## analyzer option
 
 | analyzer \ type | dissociation | association | rmsd | target | ee  | a_d | template |
@@ -198,6 +244,7 @@ trajectory_extension = ".dcd"           # Trajectory file extension. ("." is nec
 | mdtraj          | o            | o           | o    | o      | o   | o   | -        |
 | gromacs         | o            | o           | o    | o      | x   | o   | -        |
 | cpptraj         | o            | o           | o    | o      | x   | o   | -        |
+| desmond         | x            | x           | o    | o      | x   | x   | -        |
 
 
 ### Target
@@ -206,34 +253,38 @@ trajectory_extension = ".dcd"           # Trajectory file extension. ("." is nec
 - **type: str, required**
   - evaluation type, "target".
 - **threshold: float, required**
-  - PaCS-MD terminates the calculation when the evaluation value falls below this threshold (in units of nm).
+  - PaCS-MD terminates the calculation when the evaluation value falls below this threshold.
+  - In units of nm for `analyzer="mdtraj"/"gromacs"/"cpptraj"`, but **Angstrom** for `analyzer="desmond"` (Schrodinger's native coordinate unit) - do not reuse an nm-tuned threshold as-is.
 - **skip_frame: int, default=1**
   - Number of frames to skip when ranking CVs.
   - If you set `skip_frame=2`, PaCS-MD will use every other frame.
 - **analyzer: str, default="mdtraj"**
   - Trajectory tool used to calculate the evaluation value.
-  - "mdtraj", "gromacs" and "cpptraj" are supported.
+  - "mdtraj", "gromacs", "cpptraj" and "desmond" are supported. `analyzer="desmond"` requires `simulator="desmond"` too.
 - **reference: str, required**
   - Structure file path for the reference structure of RMSD calculation.
+  - For `analyzer="desmond"`, any Schrodinger-readable structure file (e.g. `.cms`, `.mae`).
 - **selection1: str, required**
   - Selection string or name of index group for specified group in trajectories (least squares fit)
   - Depending on the `analyzer`, there are different ways to specify `selection`.
     - If you use mdtraj (`analyzer="mdtraj"`), the `selection` should follow mdtraj's atom selection. e.g. "resid 5 to 100 and name CA"
     - If you use gromacs (`analyzer="gromacs"`), the `selection` should follow Gromacs index group in `index.ndx`. (Gromacs supported only)
+    - If you use desmond (`analyzer="desmond"`), the `selection` should follow Schrodinger's ASL (Atom Selection Language). e.g. "protein and backbone"
 - **selection2: str, required**
   - Selection string or name of index group for specified group in trajectories (RMSD calculation)
   - Depending on the `analyzer`, there are different ways to specify `selection`.
     - If you use mdtraj (`analyzer="mdtraj"`), the `selection` should follow mdtraj's atom selection. e.g. "resid 5 to 100 and name CA"
     - If you use gromacs (`analyzer="gromacs"`), the `selection` should follow Gromacs index group in `index.ndx`. (Gromacs supported only)
+    - If you use desmond (`analyzer="desmond"`), the `selection` should follow Schrodinger's ASL. e.g. "protein and backbone"
 - **selection3: str, default=`selection1`**
   - Selection string or name of index group for specified group in `reference` (least squares fit)
   - If your `reference` structure has different topology from your trajectories, you can utilize this option. (e.g. `reference` has different configuration about mutation, missing residues or modified residues from your the trajectories.) Otherwise, you don't need to specify this option.
-  - This option is valid when `analyzer="mdtraj"` or `analyzer="cpptraj"`.
+  - This option is valid when `analyzer="mdtraj"`, `analyzer="cpptraj"`, or `analyzer="desmond"`.
   - If you use gromacs (`analyzer="gromacs"`), this option is ignored and the same selection indices are automatically used for your trajectories and the `reference`.
 - **selection4: str, default=`selection2`**
   - Selection string or name of index group for specified group in `reference` (RMSD calculation)
   - If your `reference` structure has different topology from your trajectories, you can utilize this option. (e.g. `reference` has different configuration about mutation, missing residues or modified residues from your the trajectories.) Otherwise, you don't need to specify this option.
-  - This option is valid when `analyzer="mdtraj"` or `analyzer="cpptraj"`.
+  - This option is valid when `analyzer="mdtraj"`, `analyzer="cpptraj"`, or `analyzer="desmond"`.
   - If you use gromacs (`analyzer="gromacs"`), this option is ignored and the same selection indices are automatically used for your trajectories and the `reference`.
 
 
@@ -241,7 +292,7 @@ trajectory_extension = ".dcd"           # Trajectory file extension. ("." is nec
 
 ```toml
 type = "target"                 # Evaluation type
-threshold = 0.01                # CV threshold used to decide whether to terminate the calculation (in units of nm)
+threshold = 0.01                # CV threshold used to decide whether to terminate the calculation (in units of nm, or Angstrom for analyzer="desmond")
 skip_frame = 1                  # How many frames to skip when ranking CVs
 
 # if analyzer == "mdtraj"
@@ -257,6 +308,12 @@ selection4 = "backbone and (not resid 1 to 10)"         # Selection string for s
 # selection1 = "Backbone"       # Name of index group for specified group in trajectories (least squares fit)
 # selection2 = "Backbone"       # Name of index group for specified group in trajectories (RMSD calculation)
 
+# else if analyzer == "desmond"
+# analyzer = "desmond"          # Trajectory tool used to calculate the evaluation type (requires simulator="desmond")
+# reference = "/work/ref.cms"   # Structure for comparison
+# selection1 = "protein and backbone"   # ASL for specified group in trajectories (least squares fit)
+# selection2 = "protein and backbone"   # ASL for specified group in trajectories (RMSD calculation)
+
 # else if analyzer == "cpptraj"
 # analyzer = "cpptraj"          # Trajectory tool used to calculate the evaluation type
 # selection1 = "@CA,N,O,C"      # Selection string for specified group in trajectroies (least squares fit)
@@ -270,41 +327,45 @@ selection4 = "backbone and (not resid 1 to 10)"         # Selection string for s
 - **type: str, required**
   - evaluation type, "rmsd"
 - **threshold: float, required**
-  - PaCS-MD terminates the calculation when the evaluation value exceeds this threshold (in units of nm).
+  - PaCS-MD terminates the calculation when the evaluation value exceeds this threshold.
+  - In units of nm for `analyzer="mdtraj"/"gromacs"/"cpptraj"`, but **Angstrom** for `analyzer="desmond"` - do not reuse an nm-tuned threshold as-is.
 - **skip_frame: int, default=1**
   - Number of frames to skip when ranking CVs.
   - If you set `skip_frame=2`, PaCS-MD will use every other frame.
 - **analyzer: str, default="mdtraj"**
   - Trajectory tool used to calculate the evaluation value.
-  - "mdtraj", "gromacs" and "cpptraj" are supported.
+  - "mdtraj", "gromacs", "cpptraj" and "desmond" are supported. `analyzer="desmond"` requires `simulator="desmond"` too.
 - **reference: str, required**
   - Structure file path for the reference structure of RMSD calculation.
+  - For `analyzer="desmond"`, any Schrodinger-readable structure file (e.g. `.cms`, `.mae`).
 - **selection1: str, required**
   - Selection string or name of index group for specified group in trajectories (least squares fit)
   - Depending on the `analyzer`, there are different ways to specify `selection`.
     - If you use mdtraj (`analyzer="mdtraj"`), the `selection` should follow mdtraj's atom selection. e.g. "resid 5 to 100 and name CA"
     - If you use gromacs (`analyzer="gromacs"`), the `selection` should follow Gromacs index group in `index.ndx`. (Gromacs supported only)
+    - If you use desmond (`analyzer="desmond"`), the `selection` should follow Schrodinger's ASL. e.g. "protein and backbone"
 - **selection2: str, required**
   - Selection string or name of index group for specified group in trajectories (RMSD calculation)
   - Depending on the `analyzer`, there are different ways to specify `selection`.
     - If you use mdtraj (`analyzer="mdtraj"`), the `selection` should follow mdtraj's atom selection. e.g. "resid 5 to 100 and name CA"
     - If you use gromacs (`analyzer="gromacs"`), the `selection` should follow Gromacs index group in `index.ndx`. (Gromacs supported only)
+    - If you use desmond (`analyzer="desmond"`), the `selection` should follow Schrodinger's ASL. e.g. "protein and backbone"
 - **selection3: str, default=`selection1`**
   - Selection string or name of index group for specified group in `reference` (least squares fit)
   - If your `reference` structure has different topology from your trajectories, you can utilize this option. (e.g. `reference` has different configuration about mutation, missing residues or modified residues from your the trajectories.) Otherwise, you don't need to specify this option.
-  - This option is valid when `analyzer="mdtraj"` or `analyzer="cpptraj"`.
+  - This option is valid when `analyzer="mdtraj"`, `analyzer="cpptraj"`, or `analyzer="desmond"`.
   - If you use gromacs (`analyzer="gromacs"`), this option is ignored and the same selection indices are automatically used for your trajectories and the `reference`.
 - **selection4: str, default=`selection2`**
   - Selection string or name of index group for specified group in `reference` (RMSD calculation)
   - If your `reference` structure has different topology from your trajectories, you can utilize this option. (e.g. `reference` has different configuration about mutation, missing residues or modified residues from your the trajectories.) Otherwise, you don't need to specify this option.
-  - This option is valid when `analyzer="mdtraj"` or `analyzer="cpptraj"`.
+  - This option is valid when `analyzer="mdtraj"`, `analyzer="cpptraj"`, or `analyzer="desmond"`.
   - If you use gromacs (`analyzer="gromacs"`), this option is ignored and the same selection indices are automatically used for your trajectories and the `reference`.
 
 </details>
 
 ```toml
 type = "rmsd"                   # Evaluation type
-threshold = 2                   # CV threshold used to decide whether to terminate the calculation (in units of nm)
+threshold = 2                   # CV threshold used to decide whether to terminate the calculation (in units of nm, or Angstrom for analyzer="desmond")
 skip_frame = 1                  # How many frames to skip when ranking CVs
 
 # if analyzer == "mdtraj"
@@ -324,6 +385,12 @@ selection4 = "backbone and (not resid 1 to 10)"         # Selection string for s
 # analyzer = "gromacs"          # Trajectory tool used to calculate the evaluation type
 # selection1 = "@CA,N,O,C"      # Selection string for specified group in trajectories (least squares fit)
 # selection2 = "@CA,N,O,C"      # Selection string for specified group in trajectories (RMSD calculation)
+
+# else if analyzer == "desmond"
+# analyzer = "desmond"          # Trajectory tool used to calculate the evaluation type (requires simulator="desmond")
+# reference = "/work/ref.cms"   # Structure for comparison
+# selection1 = "protein and backbone"   # ASL for specified group in trajectories (least squares fit)
+# selection2 = "protein and backbone"   # ASL for specified group in trajectories (RMSD calculation)
 ```
 
 

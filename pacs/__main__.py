@@ -11,10 +11,12 @@ from .mdrun.analyzer.target import Target
 from .mdrun.analyzer.template import Template
 from .mdrun.Cycle import Cycle
 from .mdrun.exporter.amber import eAmber
+from .mdrun.exporter.desmond import eDesmond
 from .mdrun.exporter.gromacs import eGromacs
 from .mdrun.exporter.namd import eNamd
 from .mdrun.exporter.superExporter import SuperExporter
 from .mdrun.simulator.amber import AMBER
+from .mdrun.simulator.desmond import DESMOND
 from .mdrun.simulator.gromacs import GROMACS
 from .mdrun.simulator.namd import NAMD
 from .mdrun.simulator.superSimulator import SuperSimulator
@@ -37,6 +39,7 @@ def prepare_md(
         "namd": NAMD(),
         "gromacs": GROMACS(),
         "amber": AMBER(),
+        "desmond": DESMOND(),
     }.get(settings.simulator)
 
     analyzer: SuperAnalyzer = {
@@ -53,6 +56,7 @@ def prepare_md(
         "namd": eNamd(),
         "gromacs": eGromacs(),
         "amber": eAmber(),
+        "desmond": eDesmond(),
     }.get(settings.simulator)
 
     LOGGER.info(f"{settings}")

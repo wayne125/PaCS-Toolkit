@@ -1,0 +1,14 @@
+# PaCS-MD Desmond production job script example
+# This is a reference template for users to copy and adjust
+# Not used directly by the code - modify according to your system
+
+task {
+  task = "desmond:auto"
+}
+
+simulate {
+   cfg_file = "production.cfg"
+   jobname  = "$MAINJOBNAME"
+   dir      = "."
+   compress = ""
+}

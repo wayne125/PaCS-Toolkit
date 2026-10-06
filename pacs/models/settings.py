@@ -21,11 +21,15 @@ class MDsettings:
         centering (bool): whether to center the structure or not in export
         centering_selection (str): selection for centering
         working_dir (Path): working directory
-        simulator (str): simulator for MD simulation(gromacs, namd, amber)
+        simulator (str): simulator for MD simulation(gromacs, namd, amber, desmond)
         structure (Path): structure file
         topology (Path): topology file
         mdconf (Path): parameter file
         index_file (Path): index file
+        msj_file (Path): Desmond job script file (required for desmond simulator)
+        desmond_host (str): Desmond multisim host (default: localhost)
+        desmond_maxjob (int): Desmond multisim maxjob (default: 1)
+        desmond_lic (str): Desmond license class for multisim (e.g. DESMOND_GPGPU:16), optional
         trajectory_extension (str): extension of trajectory file
         cmd_mpi (str): command for mpi
         cmd_parallel (str): command for parallel simulation
@@ -57,6 +61,10 @@ class MDsettings:
     topology: Path = None
     mdconf: Path = None
     index_file: Path = None
+    msj_file: Path = None
+    desmond_host: str = "localhost"
+    desmond_maxjob: int = 1
+    desmond_lic: str = None
     trajectory_extension: str = None
     cmd_mpi: str = ""
     cmd_parallel: str = None
@@ -189,12 +197,12 @@ class MDsettings:
         self.analyzer = self.analyzer.lower()
 
         # simulator
-        if self.simulator not in ["gromacs", "namd", "amber"]:
+        if self.simulator not in ["gromacs", "namd", "amber", "desmond"]:
             LOGGER.error(f"{self.simulator} is not supported")
             exit(1)
 
         # analyzer
-        if self.analyzer not in ["mdtraj", "gromacs", "cpptraj"]:
+        if self.analyzer not in ["mdtraj", "gromacs", "cpptraj", "desmond"]:
             LOGGER.error(f"{self.analyzer} is not supported")
             exit(1)
 
@@ -224,6 +232,8 @@ class MDsettings:
             self.centering_selection = "@CA,C,O,N,H"
         if self.analyzer == "gromacs" and self.centering_selection is None:
             self.centering_selection = "Protein"
+        if self.analyzer == "desmond" and self.centering_selection is None:
+            self.centering_selection = "protein"
 
         # threshold check
         if self.threshold is None and self.type in [
@@ -237,6 +247,10 @@ class MDsettings:
 
         if self.simulator != "gromacs" and self.analyzer == "gromacs":
             LOGGER.error("simulator must be gromacs if analyzer is gromacs")
+            exit(1)
+
+        if self.simulator != "desmond" and self.analyzer == "desmond":
+            LOGGER.error("simulator must be desmond if analyzer is desmond")
             exit(1)
 
         # cmd_parallel
@@ -255,6 +269,11 @@ class MDsettings:
         # Check if indexfile is set when gromacs
         if self.simulator == "gromacs" and self.index_file is None:
             LOGGER.error("index file is required for gromacs")
+            exit(1)
+
+        # Check if msj_file is set when desmond
+        if self.simulator == "desmond" and self.msj_file is None:
+            LOGGER.error("msj_file is required for desmond")
             exit(1)
 
         if self.type in ["target", "rmsd"] and self.reference is None:
@@ -290,6 +309,8 @@ class MDsettings:
         self.working_dir = Path(self.working_dir)
         if self.simulator == "gromacs":
             self.index_file = Path(self.index_file)
+        if self.simulator == "desmond":
+            self.msj_file = Path(self.msj_file)
 
         # analyzer
         if self.type in ["target", "rmsd"]:
@@ -336,19 +357,24 @@ class MDsettings:
             ".gsd",
         ]
         # Retrieve the topology file from the input
-        top_mdtraj = next(
-            (
-                v
-                for v in vars(self).values()
-                if hasattr(v, "as_posix") and v.suffix in top_extension
-            ),
-            None,
-        )
-        if top_mdtraj is not None:
-            self.top_mdtraj = top_mdtraj
+        # Skip this check for desmond since it uses native export path (not mdtraj)
+        if self.simulator == "desmond":
+            # For Desmond, the .cms file serves as both structure and topology
+            self.top_mdtraj = self.structure
         else:
-            LOGGER.error("a topology file required to read the trajectory is missing.")
-            exit(1)
+            top_mdtraj = next(
+                (
+                    v
+                    for v in vars(self).values()
+                    if hasattr(v, "as_posix") and v.suffix in top_extension
+                ),
+                None,
+            )
+            if top_mdtraj is not None:
+                self.top_mdtraj = top_mdtraj
+            else:
+                LOGGER.error("a topology file required to read the trajectory is missing.")
+                exit(1)
 
         # structure_extension
         init_structure_extension = [
@@ -373,6 +399,7 @@ class MDsettings:
             ".rst7",
             ".tng",
             ".dtr",
+            ".cms",
             ".gsd",
         ]
         tmp = self.structure.suffix

@@ -1,6 +1,6 @@
 # Simulator
 
-- In PaCS-MD, simulations corresponding to the `simulator` are executed. Gromacs, Amber, and NAMD are supported.
+- In PaCS-MD, simulations corresponding to the `simulator` are executed. Gromacs, Amber, NAMD, and Desmond are supported.
 - In each cycle, `n_replica` simulations are executed. `n_parallel` simulations are will run in parallel. If `n_replica` is not a multiple of `n_parallel`, or in cycle 0, the remainder of the simulations will run in series.
 - If you want to run multiple replica simulations in parallel using MPI, set `cmd_mpi`. If `cmd_mpi` is not set, parallel execution will be performed using the multiprocessing module of python.
 
@@ -12,6 +12,8 @@
     - [keywords](#keywords-1)
 - [NAMD](#namd)
     - [keywords](#keywords-2)
+- [Desmond](#desmond)
+    - [keywords](#keywords-3)
 
 
 ## When are `cmd_serial` & `cmd_parallel` used ?
@@ -96,5 +98,35 @@ To run the simulation using NAMD, write in the inputfile as in [this example](in
 - **trajectory_extension: str, required**
   - Trajectory file extension. (The "." is necessary.) e.g. ".dcd"
 
+## Desmond
 
+⚠️ *experimental* - see [`jobscripts/desmond/README.md`](https://github.com/Kitaolab/PaCS-Toolkit/tree/main/jobscripts/desmond)
+for required setup steps (running under `$SCHRODINGER/run python3`, a
+space-free `structure`/`working_dir`, etc.) before using this. Unlike the
+other three engines, Desmond is driven through the Schrodinger Python API
+rather than a plain CLI command, so `cmd_serial` is fixed to
+`"$SCHRODINGER/utilities/multisim"` and a few extra keywords are needed.
+
+To run the simulation using Desmond, write in the inputfile as in [this example](inputfile.md#desmond). The details of each keyword are as follows.
+
+#### keywords
+- **simulator: str, required**
+  - Software used inside PaCS-MD. e.g. "desmond"
+- **cmd_serial: str, required**
+  - Must be `"$SCHRODINGER/utilities/multisim"`.
+- **structure: str, required**
+  - A fully equilibrated Desmond `.cms` structure (not just energy-minimized - see the README linked above). e.g. "./start.cms"
+  - This is also used as the initial structure of PaCS-MD, and as `topology` (the `.cms` serves both roles for Desmond).
+- **mdconf: str, required**
+  - Desmond `.cfg` parameter file for the production stage. e.g. "./production.cfg"
+- **msj_file: str, required**
+  - Desmond `.msj` job script for the production stage, referencing `mdconf` via a `cfg_file = "..."` field in its `simulate` block. e.g. "./production.msj"
+- **desmond_host: str, default="localhost"**
+  - Host passed to multisim's `-HOST` flag.
+- **desmond_maxjob: int, default=1**
+  - Passed to multisim's `-maxjob` flag. On a single-GPU workstation this has no effect on throughput.
+- **desmond_lic: str, optional**
+  - Desmond license class, e.g. "DESMOND_GPGPU:16". Only needed if your license setup requires it explicitly.
+- **trajectory_extension: str, required**
+  - Must be ".dtr" (Desmond's native trajectory format).
 
