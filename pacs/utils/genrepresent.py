@@ -281,7 +281,14 @@ def load_frame_to_time(settings: MDsettings) -> Dict[int, float]:
 
 def detect_lastcycle(settings: MDsettings) -> int:
     # detect the last cycle
-    last_cycle = 0
+    # NOTE: last_cycle must default to settings.max_cycle, not 0 - if the
+    # run completed every cycle through max_cycle with no missing
+    # cv_ranked.log, the loop below never hits its break, and the old
+    # default of 0 falsely triggered the "cv_ranked.log is not found" error
+    # below even though the run genuinely finished. Confirmed by a real
+    # run that completed both of its 2 cycles cleanly. This bug is
+    # pre-existing and engine-agnostic (not desmond-specific).
+    last_cycle = settings.max_cycle
     for cycle in range(1, settings.max_cycle + 1):
         cycle_dir = Path(settings.each_cycle(_cycle=cycle))
         if not (cycle_dir / "summary/cv_ranked.log").exists():
