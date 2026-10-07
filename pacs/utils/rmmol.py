@@ -40,6 +40,8 @@ def make_top(settings: MDsettings) -> None:
         make_top_gmx(settings)
     elif settings.analyzer == "cpptraj":
         make_top_cpptraj(settings)
+    elif settings.analyzer == "desmond":
+        make_top_desmond(settings)
     else:
         LOGGER.error("analyze tool is not specified")
         exit(1)
@@ -131,6 +133,23 @@ def make_top_cpptraj(settings: MDsettings) -> None:
     LOGGER.info(f"topology file rmmol_top.pdb has been created in {dir}")
 
 
+def make_top_desmond(settings: MDsettings) -> None:
+    from schrodinger.application.desmond.packages import traj_util, topo
+
+    dir = settings.each_replica(_cycle=0, _replica=1)
+    ext = settings.structure_extension
+    if Path(f"{dir}/rmmol_top.cms").exists():
+        LOGGER.warn(f"{dir}/rmmol_top.cms already exists. continue")
+    if not Path(f"{dir}/prd-out{ext}").exists():
+        LOGGER.error(f"{dir}/prd-out{ext} does not exist")
+        exit(1)
+
+    _, cms_model, _ = traj_util.read_cms_and_traj(f"{dir}/prd-out{ext}")
+    reduced_cms_model, _ = topo.extract_subsystem(cms_model, settings.keep_selection)
+    reduced_cms_model.write(f"{dir}/rmmol_top.cms")
+    LOGGER.info(f"topology file rmmol_top.cms has been created in {dir}")
+
+
 def rmmol(settings: MDsettings, cycle: int, last_cycle: bool) -> None:
     n_replica = detect_n_replica(settings, cycle)
     n_loop = (n_replica + settings.n_parallel - 1) // settings.n_parallel
@@ -153,6 +172,11 @@ def rmmol(settings: MDsettings, cycle: int, last_cycle: bool) -> None:
             elif settings.analyzer == "cpptraj":
                 p = mp.Process(
                     target=rmmol_replica_cpptraj,
+                    args=(settings, cycle, replica, last_cycle),
+                )
+            elif settings.analyzer == "desmond":
+                p = mp.Process(
+                    target=rmmol_replica_desmond,
                     args=(settings, cycle, replica, last_cycle),
                 )
             else:
@@ -280,12 +304,50 @@ def rmmol_replica_cpptraj(
             exit(1)
 
 
+def rmmol_replica_desmond(
+    settings: MDsettings, cycle: int, replica: int, last_cycle: bool
+) -> None:
+    from schrodinger.application.desmond.packages import traj, traj_util, topo
+
+    ext = settings.structure_extension
+    if cycle == 0 and replica >= 2:
+        return
+    dir = settings.each_replica(_cycle=cycle, _replica=replica)
+    # file check
+    if not Path(f"{dir}/prd-out{ext}").exists():
+        LOGGER.warn(f"{dir}/prd-out{ext} does not exist")
+        return
+
+    # create new trajectory and topology without the stripped molecules
+    msys_model, cms_model, tr = traj_util.read_cms_and_traj(f"{dir}/prd-out{ext}")
+    aids = cms_model.select_atom(settings.keep_selection)
+    if cms_model.need_msys:
+        gids = topo.aids2gids(cms_model, aids, include_pseudoatoms=True)
+    else:
+        gids = cms_model.convert_to_gids(aids, with_pseudo=True)
+
+    reduced_frames = [fr.reduce(gids) for fr in tr]
+    reduced_cms_model, _ = topo.extract_subsystem(cms_model, settings.keep_selection)
+
+    traj.write_traj(reduced_frames, f"{dir}/prd_rmmol_trj")
+    reduced_cms_model.write(f"{dir}/prd_rmmol-out{ext}")
+
+    # remove previous trajectory
+    if not last_cycle:
+        import shutil
+
+        Path(f"{dir}/prd-out{ext}").unlink()
+        shutil.rmtree(f"{dir}/prd_trj", ignore_errors=True)
+
+
 def rmmol_log_add_info(settings: MDsettings) -> None:
     if settings.analyzer == "mdtraj":
         pass
     elif settings.analyzer == "gromacs":
         rmmol_log_add_info_gmx(settings)
     elif settings.analyzer == "cpptraj":
+        pass
+    elif settings.analyzer == "desmond":
         pass
     else:
         LOGGER.error("analyze tool is not specified")

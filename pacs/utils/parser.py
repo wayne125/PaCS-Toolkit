@@ -139,6 +139,26 @@ class Parser:
             help="amber topology file path.",
         )
 
+        # genrepresent desmond
+        parser_genrepresent_desmond = parser_genrepresent_sub.add_parser(
+            "desmond", help="using desmond"
+        )
+        parser_genrepresent_desmond.add_argument(
+            "-t",
+            "--trial",
+            type=int,
+            required=True,
+            help="trial number without 0-fill when pacsmd was conducted (e.g. -t 1)",
+        )
+        parser_genrepresent_desmond.add_argument(
+            "-trj",
+            "--trajectory",
+            type=str,
+            required=True,
+            help="desmond .cms output file name (e.g. prd-out.cms) - the paired "
+            "trajectory directory is auto-discovered from it",
+        )
+
         # rmmol
         parser_rmmol = subparsers.add_parser(
             "rmmol",
@@ -868,15 +888,20 @@ class Parser:
             dic["trial"] = int(args.trial)
             dic["max_cycle"] = 1000
             dic["trajectory"] = args.trajectory
-            dic["topology"] = args.topology
             dic["trajectory_extension"] = "." + args.trajectory.split(".")[-1]
             if sys.argv[2] == "mdtraj":
                 dic["analyzer"] = "mdtraj"
+                dic["topology"] = args.topology
             elif sys.argv[2] == "gmx":
                 dic["analyzer"] = "gromacs"
+                dic["topology"] = args.topology
                 dic["cmd_gmx"] = args.cmd_gmx
             elif sys.argv[2] == "cpptraj":
                 dic["analyzer"] = "cpptraj"
+                dic["topology"] = args.topology
+            elif sys.argv[2] == "desmond":
+                dic["analyzer"] = "desmond"
+                dic["topology"] = args.trajectory
             conf = MDsettings.__new__(MDsettings)
             conf.__dict__.update(dic)
             self.check_version(f"./trial{args.trial:03}")

@@ -16,6 +16,8 @@ def genrepresent(settings: MDsettings) -> None:
         genrepresent_gmx(settings)
     elif settings.analyzer == "cpptraj":
         genrepresent_cpptraj(settings)
+    elif settings.analyzer == "desmond":
+        genrepresent_desmond(settings)
     else:
         LOGGER.error("analyze tool is not specified")
         exit(1)
@@ -210,6 +212,55 @@ def genrepresent_cpptraj(settings: MDsettings) -> None:
     if res_rm.returncode != 0:
         LOGGER.error(f"error occurred at rm command in cycle {cycle}")
         exit(1)
+    LOGGER.info("genrepresent has been extracted successfully")
+
+
+def genrepresent_desmond(settings: MDsettings) -> None:
+    from schrodinger.application.desmond.packages import traj, traj_util
+
+    # create the directory to store the repr trajectory
+    repr_dir = make_reprdir(settings)
+
+    # detect the last cycle
+    last_cycle = detect_lastcycle(settings)
+
+    # extract the repr trajectory from each cycle
+    frame_segments = []
+    cms_model = None
+    for cycle in range(last_cycle, -1, -1):  # iteration until cycle 0
+        cycle_dir = settings.each_cycle(_cycle=cycle)
+        if cycle == last_cycle:
+            selected_replica = 1
+        with open(f"{cycle_dir}/summary/cv_ranked.log", "r") as f:
+            for idx, line in enumerate(f):
+                if idx == (selected_replica - 1):
+                    line = line.strip()
+                    (_, selected_replica, _, last_frame, _, _) = line.split(" ")
+                    last_frame = int(last_frame)
+                    selected_replica = int(selected_replica)
+                    LOGGER.info(
+                        f"cycle: {cycle}, replica: {selected_replica}, frame: {last_frame}"
+                    )
+                    break
+
+        # extract trajectory
+        rep_dir = Path(settings.each_replica(_cycle=cycle, _replica=selected_replica))
+        cms_path = f"{rep_dir}/{settings.trajectory}"
+        _, cms_model, tr = traj_util.read_cms_and_traj(cms_path)
+
+        extracted_frames = tr[1 : last_frame + 1]
+        frame_segments.append(extracted_frames)
+
+    # concatenate the repr trajectory from all cycles (chronological order)
+    frame_segments = frame_segments[::-1]
+    combined_frames = []
+    for seg in frame_segments:
+        combined_frames.extend(seg)
+
+    repr_trj_dir = f"{repr_dir}/repr_complete_trj"
+    traj.write_traj(combined_frames, repr_trj_dir)
+    cms_model.write(f"{repr_dir}/repr_complete.cms")
+
     LOGGER.info("genrepresent has been extracted successfully")
 
 

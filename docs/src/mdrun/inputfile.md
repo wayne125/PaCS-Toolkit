@@ -244,7 +244,7 @@ trajectory_extension = ".dtr"                      # Trajectory file extension. 
 | mdtraj          | o            | o           | o    | o      | o   | o   | -        |
 | gromacs         | o            | o           | o    | o      | x   | o   | -        |
 | cpptraj         | o            | o           | o    | o      | x   | o   | -        |
-| desmond         | x            | x           | o    | o      | x   | x   | -        |
+| desmond         | o            | o           | o    | o      | o   | o   | -        |
 
 
 ### Target
