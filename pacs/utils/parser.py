@@ -352,6 +352,49 @@ class Parser:
             help="output file name [default: {traj}_fit{ext}]",
         )
 
+        # desmond
+        parser_fit_traj_desmond = parser_fit_traj_sub.add_parser(
+            "desmond", help="using desmond"
+        )
+        parser_fit_traj_desmond.add_argument(
+            "-tf", "--trj-file", type=str, required=True, help="trajectory file path (.cms)"
+        )
+        parser_fit_traj_desmond.add_argument(
+            "-r",
+            "--ref-structure",
+            type=str,
+            required=True,
+            help="reference structure file path for fitting",
+        )
+        parser_fit_traj_desmond.add_argument(
+            "-ts",
+            "--trj-selection",
+            type=str,
+            required=True,
+            help="selection for fitting in trajectory",
+        )
+        parser_fit_traj_desmond.add_argument(
+            "-rs",
+            "--ref-selection",
+            type=str,
+            required=True,
+            help="selection for fitting in reference",
+        )
+        parser_fit_traj_desmond.add_argument(
+            "-p",
+            "--n_parallel",
+            type=int,
+            default=1,
+            help="number of parallel [default: 1]",
+        )
+        parser_fit_traj_desmond.add_argument(
+            "-o",
+            "--out",
+            type=str,
+            default=None,
+            help="output directory name [default: {traj}_fit_trj]",
+        )
+
         # trial
         parser_fit_trial = parser_fit_sub.add_parser(
             "trial",
@@ -414,6 +457,56 @@ class Parser:
             type=str,
             default=None,
             help="output file name [default: {traj}_fit{ext}]",
+        )
+
+        # desmond
+        parser_fit_trial_desmond = parser_fit_trial_sub.add_parser(
+            "desmond", help="using desmond"
+        )
+        parser_fit_trial_desmond.add_argument(
+            "-t",
+            "--trial",
+            type=int,
+            required=True,
+            help="trial number without 0-fill when pacsmd was conducted (e.g. -t 1)",
+        )
+        parser_fit_trial_desmond.add_argument(
+            "-tf", "--trj-file", type=str, required=True, help="trajectory file name (.cms)"
+        )
+        parser_fit_trial_desmond.add_argument(
+            "-r",
+            "--ref-structure",
+            type=str,
+            required=True,
+            help="reference structure file path for fitting",
+        )
+        parser_fit_trial_desmond.add_argument(
+            "-ts",
+            "--trj-selection",
+            type=str,
+            required=True,
+            help="selection for fitting in trajectory",
+        )
+        parser_fit_trial_desmond.add_argument(
+            "-rs",
+            "--ref-selection",
+            type=str,
+            required=True,
+            help="selection for fitting in reference",
+        )
+        parser_fit_trial_desmond.add_argument(
+            "-p",
+            "--n_parallel",
+            type=int,
+            default=1,
+            help="number of parallel [default: 1]",
+        )
+        parser_fit_trial_desmond.add_argument(
+            "-o",
+            "--out",
+            type=str,
+            default=None,
+            help="output directory name [default: {traj}_fit_trj]",
         )
 
         # gmx
@@ -510,6 +603,39 @@ class Parser:
             help="output pdb file path [default: pathway.pdb]",
         )
 
+        # gencom_traj desmond
+        parser_gencom_traj_desmond = parser_gencom_traj_sub.add_parser(
+            "desmond", help="using desmond"
+        )
+        parser_gencom_traj_desmond.add_argument(
+            "-trj",
+            "--trj-file",
+            type=str,
+            required=True,
+            help="trajectory file path (.cms)",
+        )
+        parser_gencom_traj_desmond.add_argument(
+            "-s",
+            "--selection",
+            type=str,
+            required=True,
+            help="selection string to visualize the COM",
+        )
+        parser_gencom_traj_desmond.add_argument(
+            "-r",
+            "--resid",
+            type=int,
+            default=1,
+            help="resid for vitual site of com of ligand [default: 1]",
+        )
+        parser_gencom_traj_desmond.add_argument(
+            "-o",
+            "--out-pdb",
+            type=str,
+            default="pathway.pdb",
+            help="output pdb file path [default: pathway.pdb]",
+        )
+
         # gencom_trial
         parser_gencom_trial = parser_gencom_sub.add_parser(
             "trial", help="apply single pacsmd trial"
@@ -563,6 +689,53 @@ class Parser:
             help="output pdb file path [default: pathway.pdb]",
         )
         parser_gencom_trial_mdtraj.add_argument(
+            "-sf",
+            "--stride-frame",
+            type=int,
+            default=10,
+            help="stride to skip when extracting the com for visualization [default: 10]",
+        )
+
+        # gencom_trial desmond
+        parser_gencom_trial_desmond = parser_gencom_trial_sub.add_parser(
+            "desmond", help="using desmond"
+        )
+        parser_gencom_trial_desmond.add_argument(
+            "-t",
+            "--trial",
+            type=int,
+            required=True,
+            help="trial number without 0-fill when pacsmd was conducted (e.g. -t 1)",
+        )
+        parser_gencom_trial_desmond.add_argument(
+            "-trj",
+            "--trjfile-name",
+            type=str,
+            default="prd-out.cms",
+            help="trajectory file name [default: prd-out.cms].",
+        )
+        parser_gencom_trial_desmond.add_argument(
+            "-s",
+            "--selection",
+            type=str,
+            required=True,
+            help="selection string to visualize the COM",
+        )
+        parser_gencom_trial_desmond.add_argument(
+            "-r",
+            "--resid",
+            type=int,
+            default=1,
+            help="resid for vitual site of com of ligand [default: 1]",
+        )
+        parser_gencom_trial_desmond.add_argument(
+            "-o",
+            "--out-pdb",
+            type=str,
+            default="all_pathway.pdb",
+            help="output pdb file path [default: pathway.pdb]",
+        )
+        parser_gencom_trial_desmond.add_argument(
             "-sf",
             "--stride-frame",
             type=int,
@@ -654,6 +827,70 @@ class Parser:
             help="mdtraj selection2 for calculating comvec in trajectory",
         )
 
+        # desmond
+        parser_genfeature_comvec_desmond = parser_genfeature_comvec_sub.add_parser(
+            "desmond", help="using desmond"
+        )
+        parser_genfeature_comvec_desmond.add_argument(
+            "-t", "--trial", type=int, required=True, help="trial number without 0-fill"
+        )
+        parser_genfeature_comvec_desmond.add_argument(
+            "-tf",
+            "--trj-file",
+            type=str,
+            required=True,
+            help="trajectory file name (.cms)",
+        )
+        parser_genfeature_comvec_desmond.add_argument(
+            "-od",
+            "--outdir",
+            type=str,
+            default="comvec-genfeature",
+            help="output directory path [default: comvec-genfeature]",
+        )
+        parser_genfeature_comvec_desmond.add_argument(
+            "-p",
+            "--n_parallel",
+            type=int,
+            default=1,
+            help="number of parallel [default: 1]",
+        )
+        parser_genfeature_comvec_desmond.add_argument(
+            "-ref",
+            "--reference",
+            type=str,
+            required=True,
+            help="reference structure file path for fitting",
+        )
+        parser_genfeature_comvec_desmond.add_argument(
+            "-ft",
+            "--fit-trj",
+            type=str,
+            required=True,
+            help="selection for fitting in trajectory",
+        )
+        parser_genfeature_comvec_desmond.add_argument(
+            "-fr",
+            "--fit-ref",
+            type=str,
+            required=True,
+            help="selection for fitting in reference",
+        )
+        parser_genfeature_comvec_desmond.add_argument(
+            "-s1",
+            "--selection1",
+            type=str,
+            required=True,
+            help="selection1 for calculating comvec in trajectory",
+        )
+        parser_genfeature_comvec_desmond.add_argument(
+            "-s2",
+            "--selection2",
+            type=str,
+            required=True,
+            help="selection2 for calculating comvec in trajectory",
+        )
+
         # rmsd
         parser_genfeature_rmsd = parser_genfeature_sub.add_parser(
             "rmsd", help="RMSD based feature"
@@ -731,6 +968,70 @@ class Parser:
             help="mdtraj selection for calculating in reference",
         )
 
+        # desmond
+        parser_genfeature_rmsd_desmond = parser_genfeature_rmsd_sub.add_parser(
+            "desmond", help="using desmond"
+        )
+        parser_genfeature_rmsd_desmond.add_argument(
+            "-t", "--trial", type=int, required=True, help="trial number without 0-fill"
+        )
+        parser_genfeature_rmsd_desmond.add_argument(
+            "-tf",
+            "--trj-file",
+            type=str,
+            required=True,
+            help="trajectory file name (.cms)",
+        )
+        parser_genfeature_rmsd_desmond.add_argument(
+            "-od",
+            "--outdir",
+            type=str,
+            default="rmsd-genfeature",
+            help="output directory path [default: rmsd-genfeature]",
+        )
+        parser_genfeature_rmsd_desmond.add_argument(
+            "-p",
+            "--n_parallel",
+            type=int,
+            default=1,
+            help="number of parallel [default: 1]",
+        )
+        parser_genfeature_rmsd_desmond.add_argument(
+            "-ref",
+            "--reference",
+            type=str,
+            required=True,
+            help="reference structure file path for fitting",
+        )
+        parser_genfeature_rmsd_desmond.add_argument(
+            "-ft",
+            "--fit-trj",
+            type=str,
+            required=True,
+            help="selection for fitting in trajectory",
+        )
+        parser_genfeature_rmsd_desmond.add_argument(
+            "-fr",
+            "--fit-ref",
+            type=str,
+            required=True,
+            help="selection for fitting in reference",
+        )
+        parser_genfeature_rmsd_desmond.add_argument(
+            "-ct",
+            "--cal-trj",
+            type=str,
+            required=True,
+            help="selection for calculating in trajectory",
+        )
+        parser_genfeature_rmsd_desmond.add_argument(
+            "-cr",
+            "--cal-ref",
+            type=str,
+            required=True,
+            help="selection for calculating in reference",
+        )
+
         # xyz
         parser_genfeature_xyz = parser_genfeature_sub.add_parser(
             "xyz", help="XYZ based feature"
@@ -778,6 +1079,42 @@ class Parser:
             type=str,
             required=True,
             help="mdtraj selection extracted in trajectory",
+        )
+
+        # desmond
+        parser_genfeature_xyz_desmond = parser_genfeature_xyz_sub.add_parser(
+            "desmond", help="using desmond"
+        )
+        parser_genfeature_xyz_desmond.add_argument(
+            "-t", "--trial", type=int, required=True, help="trial number without 0-fill"
+        )
+        parser_genfeature_xyz_desmond.add_argument(
+            "-tf",
+            "--trj-file",
+            type=str,
+            required=True,
+            help="trajectory file name (.cms)",
+        )
+        parser_genfeature_xyz_desmond.add_argument(
+            "-od",
+            "--outdir",
+            type=str,
+            default="xyz-genfeature",
+            help="output directory path [default: xyz-genfeature]",
+        )
+        parser_genfeature_xyz_desmond.add_argument(
+            "-p",
+            "--n_parallel",
+            type=int,
+            default=1,
+            help="number of parallel [default: 1]",
+        )
+        parser_genfeature_xyz_desmond.add_argument(
+            "-s",
+            "--selection",
+            type=str,
+            required=True,
+            help="selection extracted in trajectory",
         )
 
         # comdist
@@ -834,6 +1171,49 @@ class Parser:
             type=str,
             required=True,
             help="mdtraj selection2 for calculating distance",
+        )
+
+        # desmond
+        parser_genfeature_comdist_desmond = parser_genfeature_comdist_sub.add_parser(
+            "desmond", help="using desmond"
+        )
+        parser_genfeature_comdist_desmond.add_argument(
+            "-t", "--trial", type=int, required=True, help="trial number without 0-fill"
+        )
+        parser_genfeature_comdist_desmond.add_argument(
+            "-tf",
+            "--trj-file",
+            type=str,
+            required=True,
+            help="trajectory file name (.cms)",
+        )
+        parser_genfeature_comdist_desmond.add_argument(
+            "-od",
+            "--outdir",
+            type=str,
+            default="comdist-genfeature",
+            help="output directory path [default: comdist-genfeature]",
+        )
+        parser_genfeature_comdist_desmond.add_argument(
+            "-p",
+            "--n_parallel",
+            type=int,
+            default=1,
+            help="number of parallel [default: 1]",
+        )
+        parser_genfeature_comdist_desmond.add_argument(
+            "-s1",
+            "--selection1",
+            type=str,
+            required=True,
+            help="selection1 for calculating distance",
+        )
+        parser_genfeature_comdist_desmond.add_argument(
+            "-s2",
+            "--selection2",
+            type=str,
+            required=True,
+            help="selection2 for calculating distance",
         )
 
         args = parser.parse_args()
@@ -963,6 +1343,16 @@ class Parser:
                     conf = MDsettings(**dic)
                     fit(conf, args.trj_file, args.out)
                     exit(0)
+                elif sys.argv[3] == "desmond":
+                    dic = defaultdict()
+                    dic["analyzer"] = "desmond"
+                    dic["reference"] = args.ref_structure
+                    dic["selection1"] = args.trj_selection
+                    dic["selection2"] = args.ref_selection
+                    dic["n_parallel"] = int(args.n_parallel)
+                    conf = MDsettings(**dic)
+                    fit(conf, args.trj_file, args.out)
+                    exit(0)
             if sys.argv[2] == "trial":
                 if len(sys.argv) == 3:
                     LOGGER.error("Use -h")
@@ -972,6 +1362,18 @@ class Parser:
                     dic["analyzer"] = "mdtraj"
                     dic["trial"] = int(args.trial)
                     dic["top_mdtraj"] = args.topology
+                    dic["reference"] = args.ref_structure
+                    dic["selection1"] = args.trj_selection
+                    dic["selection2"] = args.ref_selection
+                    dic["n_parallel"] = int(args.n_parallel)
+                    conf = MDsettings(**dic)
+                    self.check_version(f"./trial{args.trial:03}")
+                    fit_trial(conf, args.trj_file, args.out)
+                    exit(0)
+                elif sys.argv[3] == "desmond":
+                    dic = defaultdict()
+                    dic["analyzer"] = "desmond"
+                    dic["trial"] = int(args.trial)
                     dic["reference"] = args.ref_structure
                     dic["selection1"] = args.trj_selection
                     dic["selection2"] = args.ref_selection
@@ -997,6 +1399,13 @@ class Parser:
                     conf = MDsettings(**dic)
                     gencom_traj(conf, args.trj_file, args.out_pdb, args.resid)
                     exit(0)
+                elif sys.argv[3] == "desmond":
+                    dic = defaultdict()
+                    dic["selection1"] = args.selection
+                    dic["analyzer"] = "desmond"
+                    conf = MDsettings(**dic)
+                    gencom_traj(conf, args.trj_file, args.out_pdb, args.resid)
+                    exit(0)
             if sys.argv[2] == "trial":
                 if len(sys.argv) == 3:
                     LOGGER.error("Use -h")
@@ -1017,6 +1426,21 @@ class Parser:
                         args.resid,
                     )
                     exit(0)
+                elif sys.argv[3] == "desmond":
+                    dic = defaultdict()
+                    dic["selection1"] = args.selection
+                    dic["analyzer"] = "desmond"
+                    conf = MDsettings(**dic)
+                    self.check_version(f"./trial{args.trial:03}")
+                    gencom_trial(
+                        conf,
+                        args.trial,
+                        args.trjfile_name,
+                        args.out_pdb,
+                        args.stride_frame,
+                        args.resid,
+                    )
+                    exit(0)
 
         if sys.argv[1] == "genfeature":
             if len(sys.argv) == 2:
@@ -1024,50 +1448,95 @@ class Parser:
                 exit(1)
             self.check_version(f"./trial{args.trial:03}")
             if sys.argv[2] == "comvec":
-                comvec.cal_feature_trial(
-                    args.trial,
-                    args.trj_file,
-                    args.topology,
-                    args.outdir,
-                    args.n_parallel,
-                    args.reference,
-                    args.fit_trj,
-                    args.fit_ref,
-                    args.selection1,
-                    args.selection2,
-                )
+                if sys.argv[3] == "mdtraj":
+                    comvec.cal_feature_trial(
+                        args.trial,
+                        args.trj_file,
+                        args.topology,
+                        args.outdir,
+                        args.n_parallel,
+                        args.reference,
+                        args.fit_trj,
+                        args.fit_ref,
+                        args.selection1,
+                        args.selection2,
+                    )
+                elif sys.argv[3] == "desmond":
+                    comvec.cal_feature_trial_desmond(
+                        args.trial,
+                        args.trj_file,
+                        args.outdir,
+                        args.n_parallel,
+                        args.reference,
+                        args.fit_trj,
+                        args.fit_ref,
+                        args.selection1,
+                        args.selection2,
+                    )
             elif sys.argv[2] == "comdist":
-                comdist.cal_feature_trial(
-                    args.trial,
-                    args.trj_file,
-                    args.topology,
-                    args.outdir,
-                    args.n_parallel,
-                    args.selection1,
-                    args.selection2,
-                )
+                if sys.argv[3] == "mdtraj":
+                    comdist.cal_feature_trial(
+                        args.trial,
+                        args.trj_file,
+                        args.topology,
+                        args.outdir,
+                        args.n_parallel,
+                        args.selection1,
+                        args.selection2,
+                    )
+                elif sys.argv[3] == "desmond":
+                    comdist.cal_feature_trial_desmond(
+                        args.trial,
+                        args.trj_file,
+                        args.outdir,
+                        args.n_parallel,
+                        args.selection1,
+                        args.selection2,
+                    )
             elif sys.argv[2] == "rmsd":
-                rmsd.cal_feature_trial(
-                    args.trial,
-                    args.trj_file,
-                    args.topology,
-                    args.outdir,
-                    args.n_parallel,
-                    args.reference,
-                    args.fit_trj,
-                    args.fit_ref,
-                    args.cal_trj,
-                    args.cal_ref,
-                )
+                if sys.argv[3] == "mdtraj":
+                    rmsd.cal_feature_trial(
+                        args.trial,
+                        args.trj_file,
+                        args.topology,
+                        args.outdir,
+                        args.n_parallel,
+                        args.reference,
+                        args.fit_trj,
+                        args.fit_ref,
+                        args.cal_trj,
+                        args.cal_ref,
+                    )
+                elif sys.argv[3] == "desmond":
+                    rmsd.cal_feature_trial_desmond(
+                        args.trial,
+                        args.trj_file,
+                        args.outdir,
+                        args.n_parallel,
+                        args.reference,
+                        args.fit_trj,
+                        args.fit_ref,
+                        args.cal_trj,
+                        args.cal_ref,
+                    )
             elif sys.argv[2] == "xyz":
-                xyz.cal_feature_trial(
-                    args.trial,
-                    args.trj_file,
-                    args.topology,
-                    args.outdir,
-                    args.n_parallel,
-                    args.selection,
-                )
+                if sys.argv[3] == "mdtraj":
+                    xyz.cal_feature_trial(
+                        args.trial,
+                        args.trj_file,
+                        args.topology,
+                        args.outdir,
+                        args.n_parallel,
+                        args.selection,
+                    )
+                elif sys.argv[3] == "desmond":
+                    xyz.cal_feature_trial_desmond(
+                        args.trial,
+                        args.trj_file,
+                        args.outdir,
+                        args.n_parallel,
+                        args.selection,
+                    )
             exit(0)
 
     def parse_line(self, line: str):

@@ -7,6 +7,8 @@ LOGGER = generate_logger(__name__)
 def gencom_traj(settings: MDsettings, trj_file: str, out_pdb: str, resid: str) -> None:
     if settings.analyzer == "mdtraj":
         gencom_traj_mdtraj(settings, trj_file, out_pdb, resid)
+    elif settings.analyzer == "desmond":
+        gencom_traj_desmond(settings, trj_file, out_pdb, resid)
     else:
         LOGGER.error("this analyzer is not supported.")
         exit(1)
@@ -48,4 +50,26 @@ def gencom_traj_mdtraj(
         unitcell_angles=ua,
     )
     pathway.save(out_pdb)
+    LOGGER.info(f"visualized pathway was saved at {out_pdb}")
+
+
+def gencom_traj_desmond(
+    settings: MDsettings, trj_file: str, out_pdb: str, resid: str
+) -> None:
+    from schrodinger.application.desmond.packages import analysis, traj_util
+
+    lig_selection = settings.selection1
+
+    msys_model, cms_model, tr = traj_util.read_cms_and_traj(trj_file)
+    com_analyzer = analysis.Com(msys_model, cms_model, asl=lig_selection)
+    com_per_frame = analysis.analyze(tr, com_analyzer)
+
+    with open(out_pdb, "w") as f:
+        for i, com in enumerate(com_per_frame, start=1):
+            x, y, z = com[0], com[1], com[2]
+            f.write(
+                f"ATOM  {i:>5} VS   COM A{int(resid):>4}    "
+                f"{x:8.3f}{y:8.3f}{z:8.3f}{1.00:6.2f}{0.00:6.2f}\n"
+            )
+        f.write("END\n")
     LOGGER.info(f"visualized pathway was saved at {out_pdb}")

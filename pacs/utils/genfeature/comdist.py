@@ -40,3 +40,38 @@ def cal_feature_trial(
 
     gen_core.prepare()
     gen_core.cal_parallel(cal_feature, topology, selection1, selection2)
+
+
+def cal_feature_desmond(
+    trj_path: str,
+    selection1: str,
+    selection2: str,
+) -> np.ndarray:
+    from schrodinger.application.desmond.packages import analysis, traj_util
+
+    msys_model, cms_model, tr = traj_util.read_cms_and_traj(trj_path)
+    com1_analyzer = analysis.Com(msys_model, cms_model, asl=selection1)
+    com2_analyzer = analysis.Com(msys_model, cms_model, asl=selection2)
+    com1, com2 = analysis.analyze(tr, com1_analyzer, com2_analyzer)
+    return np.array(
+        [np.linalg.norm(np.array(c1) - np.array(c2)) for c1, c2 in zip(com1, com2)]
+    )
+
+
+def cal_feature_trial_desmond(
+    trial: int,
+    trj_filename: str,
+    output_directory: str,
+    n_parallel: int,
+    selection1: str,
+    selection2: str,
+) -> None:
+    gen_core = GenFeatureCore(
+        trial=trial,
+        trj_filename=trj_filename,
+        output_directory=output_directory,
+        n_parallel=n_parallel,
+    )
+
+    gen_core.prepare()
+    gen_core.cal_parallel(cal_feature_desmond, selection1, selection2)
