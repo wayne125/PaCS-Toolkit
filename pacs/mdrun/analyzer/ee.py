@@ -23,7 +23,17 @@ class EdgeExpansion(SuperAnalyzer):
         self, settings: MDsettings, cycle: int, replica: int, queue: mp.Queue
     ) -> List[float]:
         if settings.reference is None:
-            settings.reference = f"{settings.each_replica(_cycle=0, _replica=1)}/prd{settings.trajectory_extension}"  # NOQA: B950
+            # NOTE: must branch on analyzer here - this default is set
+            # unconditionally before the cycle==0 dispatch below, so it runs
+            # (and poisons settings.reference with the wrong filename) before
+            # pca_desmond ever gets a chance to apply its own default.
+            # Confirmed by a real crash: TrajectoryUnreadableError on
+            # "prd.dtr" (the mdtraj-style default) when running analyzer=
+            # "desmond", whose real cycle-0 output is named prd-out.cms.
+            if settings.analyzer == "desmond":
+                settings.reference = f"{settings.each_replica(_cycle=0, _replica=1)}/prd-out{settings.structure_extension}"  # NOQA: B950
+            else:
+                settings.reference = f"{settings.each_replica(_cycle=0, _replica=1)}/prd{settings.trajectory_extension}"  # NOQA: B950
 
         if cycle == 0:
             if settings.analyzer == "desmond":
@@ -148,9 +158,8 @@ class EdgeExpansion(SuperAnalyzer):
         from schrodinger.trajectory.prody.ensemble import Ensemble
         from schrodinger.trajectory.prody.pca import EDA
 
-        if settings.reference is None:
-            settings.reference = f"{settings.each_replica(_cycle=0, _replica=1)}/prd-out{settings.structure_extension}"
-
+        # settings.reference is already set by calculate_cv's top-level
+        # default (desmond-branched) before this method runs.
         _, cms_model, tr = traj_util.read_cms_and_traj(str(settings.reference))
         ensemble = Ensemble(cms_model, tr, settings.selection4)
         ensemble.iterpose()
