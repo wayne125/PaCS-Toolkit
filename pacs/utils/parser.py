@@ -267,6 +267,25 @@ class Parser:
             "-p", "--topology", type=str, help="amber topology file path"
         )
 
+        # rmmol desmond
+        parser_rmmol_desmond = parser_rmmol_sub.add_parser(
+            "desmond", help="using desmond"
+        )
+        parser_rmmol_desmond.add_argument(
+            "-t",
+            "--trial",
+            type=int,
+            required=True,
+            help="trial number without 0-fill when pacsmd was conducted (e.g. -t 1)",
+        )
+        parser_rmmol_desmond.add_argument(
+            "-k",
+            "--keep_selection",
+            type=str,
+            required=True,
+            help='ASL selection to be retained in trajectory files (e.g. "protein")',
+        )
+
         # rmfile
         parser_rmfile = subparsers.add_parser(
             "rmfile", help="remove unnecessary files for PaCS-MD and analysis"
@@ -284,7 +303,7 @@ class Parser:
             "-s",
             "--simulator",
             required=True,
-            choices=["gromacs", "namd", "amber"],
+            choices=["gromacs", "namd", "amber", "desmond"],
             help="Name of simulator used in when using PaCS-MD",
         )
 
@@ -1295,19 +1314,24 @@ class Parser:
             dic = defaultdict()
             dic["trial"] = int(args.trial)
             dic["max_cycle"] = 1000
-            dic["trajectory_extension"] = args.trajectory_extension
             dic["keep_selection"] = args.keep_selection
             if sys.argv[2] == "mdtraj":
+                dic["trajectory_extension"] = args.trajectory_extension
                 dic["analyzer"] = "mdtraj"
                 dic["top_mdtraj"] = Path(args.top_mdtraj).resolve()
             elif sys.argv[2] == "gmx":
+                dic["trajectory_extension"] = args.trajectory_extension
                 dic["analyzer"] = "gromacs"
                 dic["cmd_gmx"] = args.cmd_gmx
                 dic["index_file"] = args.index_file
                 dic["nojump"] = args.nojump
             elif sys.argv[2] == "cpptraj":
+                dic["trajectory_extension"] = args.trajectory_extension
                 dic["analyzer"] = "cpptraj"
                 dic["topology"] = args.topology
+            elif sys.argv[2] == "desmond":
+                dic["structure_extension"] = ".cms"
+                dic["analyzer"] = "desmond"
             conf = MDsettings(**dic)
             self.check_version(f"./trial{args.trial:03}")
             make_top(conf)
