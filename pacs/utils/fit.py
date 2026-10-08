@@ -120,4 +120,22 @@ def fit_desmond(settings: MDsettings, trj_file: str, out_file: str) -> None:
         fitted_frames.append(new_fr)
 
     traj.write_traj(fitted_frames, fit_trj_dir)
+
+    # Pair a .cms with the new trajectory dir so downstream desmond tools
+    # (genrepresent/gencom/genfeature) can find it: read_cms_and_traj()
+    # locates the trajectory via the s_chorus_trajectory_file CT-level
+    # property embedded in the .cms, not by filename convention - confirmed
+    # by reading topo.find_traj_path()'s real source. Without updating this
+    # property, writing the original cms_model as-is would still point at
+    # the old (unfitted) trajectory directory.
+    trj_dir_name = Path(fit_trj_dir).name
+    fit_cms_path = (
+        f"{parent}/{trj_dir_name[:-4]}.cms"
+        if trj_dir_name.endswith("_trj")
+        else f"{fit_trj_dir}.cms"
+    )
+    cms_model.property["s_chorus_trajectory_file"] = trj_dir_name
+    cms_model.write(fit_cms_path)
+
     LOGGER.info(f"a new trajectory directory is saved as {fit_trj_dir}")
+    LOGGER.info(f"a new cms file is saved as {fit_cms_path}")
