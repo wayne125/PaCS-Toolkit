@@ -216,7 +216,12 @@ def genrepresent_cpptraj(settings: MDsettings) -> None:
 
 
 def genrepresent_desmond(settings: MDsettings) -> None:
-    from schrodinger.application.desmond.packages import traj, traj_util
+    import os
+    import shutil
+    import subprocess
+
+    from schrodinger.application.desmond import cms as cms_module
+    from schrodinger.application.desmond.packages import topo
 
     # create the directory to store the repr trajectory
     repr_dir = make_reprdir(settings)
@@ -224,9 +229,21 @@ def genrepresent_desmond(settings: MDsettings) -> None:
     # detect the last cycle
     last_cycle = detect_lastcycle(settings)
 
-    # extract the repr trajectory from each cycle
-    frame_segments = []
-    cms_model = None
+    # Concatenating frames by hand (slicing a loaded trajectory's Frame
+    # objects in Python and calling traj.write_traj on the combined list)
+    # produces a trajectory directory that write_traj does not error on,
+    # but that later fails to open at all (open_file_read failed) once the
+    # combined frame count is large enough to span multiple internal dtr
+    # blob files - confirmed by reproducing this in complete isolation with
+    # no PaCS-Toolkit code involved. trj_merge.py, schrodinger's own
+    # trajectory tool, produces an equally multi-blob but genuinely
+    # readable result for the same data - confirmed by a real round-trip
+    # test - so both the per-cycle slicing and the final concatenation are
+    # delegated to it here instead of doing either in raw Python.
+    schrodinger_run = f"{os.environ['SCHRODINGER']}/run"
+
+    segment_trjs = []
+    first_cms_path = None
     for cycle in range(last_cycle, -1, -1):  # iteration until cycle 0
         cycle_dir = settings.each_cycle(_cycle=cycle)
         if cycle == last_cycle:
@@ -243,33 +260,79 @@ def genrepresent_desmond(settings: MDsettings) -> None:
                     )
                     break
 
-        # extract trajectory
         rep_dir = Path(settings.each_replica(_cycle=cycle, _replica=selected_replica))
         cms_path = f"{rep_dir}/{settings.trajectory}"
-        _, cms_model, tr = traj_util.read_cms_and_traj(cms_path)
+        if first_cms_path is None:
+            first_cms_path = cms_path
 
-        extracted_frames = tr[1 : last_frame + 1]
-        frame_segments.append(extracted_frames)
+        # last_frame == 0 means this cycle's winning replica is frame 0
+        # itself (the cycle's own starting structure, carried over
+        # unchanged - no sampled frame improved on it). tr[1:1] is an empty
+        # slice, so there is nothing to contribute from this cycle - skip
+        # it, since asking trj_merge.py to write a zero-frame trajectory
+        # produces no output directory at all (write_traj's own empty-input
+        # early return), which would otherwise crash the final concat step
+        # with a missing-file error - confirmed by a real run on this exact
+        # run's cycles 27-30, all of which plateaued at frame 0.
+        if last_frame == 0:
+            continue
+
+        trj_path = topo.find_traj_path(cms_module.Cms(cms_path), str(rep_dir))
+        if trj_path is None:
+            LOGGER.error(f"no trajectory found associated with {cms_path}")
+            exit(1)
+
+        seg_base = f"{repr_dir}/cycle{cycle:03}_segment"
+        res = subprocess.run(
+            [
+                schrodinger_run,
+                "trj_merge.py",
+                cms_path,
+                trj_path,
+                "-s",
+                f"1:{last_frame + 1}:1",
+                "-o",
+                seg_base,
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if res.returncode != 0:
+            LOGGER.error(f"error occurred slicing cycle {cycle}: {res.stderr}")
+            exit(1)
+        segment_trjs.append(f"{seg_base}_trj")
 
     # concatenate the repr trajectory from all cycles (chronological order)
-    frame_segments = frame_segments[::-1]
-    combined_frames = []
-    for seg in frame_segments:
-        combined_frames.extend(seg)
+    segment_trjs = segment_trjs[::-1]
+    repr_base = f"{repr_dir}/repr_complete"
+    res = subprocess.run(
+        [
+            schrodinger_run,
+            "trj_merge.py",
+            first_cms_path,
+            *segment_trjs,
+            "-concat",
+            "0",
+            "1",
+            "-o",
+            repr_base,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if res.returncode != 0:
+        LOGGER.error(f"error occurred concatenating repr trajectory: {res.stderr}")
+        exit(1)
 
-    repr_trj_dir = f"{repr_dir}/repr_complete_trj"
-    traj.write_traj(combined_frames, repr_trj_dir)
-    repr_cms_path = f"{repr_dir}/repr_complete.cms"
-    cms_model.write(repr_cms_path)
-    # cms_model is whatever cycle0's replica last set it to, so its embedded
-    # trajectory reference still points at that replica's own trajectory
-    # (e.g. prd-out_fit_trj), not repr_complete_trj - confirmed by a real
-    # run raising TrajectoryUnreadableError on readback. fix_trajectory_property
-    # patches the raw FULL_SYSTEM CT directly, since cms.Cms.write() does not
-    # persist a value set through the high-level property accessor.
-    from pacs.utils.desmond_io import fix_trajectory_property
+    # trj_merge.py always names its output "{base}-out.cms" - rename to the
+    # established repr_complete.cms convention
+    shutil.move(f"{repr_base}-out.cms", f"{repr_dir}/repr_complete.cms")
 
-    fix_trajectory_property(repr_cms_path, "repr_complete_trj")
+    # clean up intermediate per-cycle segments
+    for seg_trj in segment_trjs:
+        shutil.rmtree(seg_trj, ignore_errors=True)
+        seg_cms = seg_trj[: -len("_trj")] + "-out.cms"
+        Path(seg_cms).unlink(missing_ok=True)
 
     LOGGER.info("genrepresent has been extracted successfully")
 
