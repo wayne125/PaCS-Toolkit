@@ -330,7 +330,15 @@ def rmmol_replica_desmond(
     reduced_cms_model, _ = topo.extract_subsystem(cms_model, settings.keep_selection)
 
     traj.write_traj(reduced_frames, f"{dir}/prd_rmmol_trj")
-    reduced_cms_model.write(f"{dir}/prd_rmmol-out{ext}")
+    rmmol_cms_path = f"{dir}/prd_rmmol-out{ext}"
+    reduced_cms_model.write(rmmol_cms_path)
+    # reduced_cms_model still carries the original prd_trj trajectory
+    # reference (extract_subsystem does not update it), and the original
+    # prd_trj gets deleted below when not last_cycle - without this fix
+    # prd_rmmol-out's trajectory pointer would be permanently dangling.
+    from pacs.utils.desmond_io import fix_trajectory_property
+
+    fix_trajectory_property(rmmol_cms_path, "prd_rmmol_trj")
 
     # remove previous trajectory
     if not last_cycle:

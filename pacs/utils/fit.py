@@ -85,8 +85,13 @@ def fit_desmond(settings: MDsettings, trj_file: str, out_file: str) -> None:
     ext = Path(trj_file).suffix
     parent = Path(trj_file).parent
     stem = Path(trj_file).stem
+    # multisim's own convention strips "-out" for the trajectory dir name
+    # (e.g. prd-out.cms pairs with prd_trj, not prd-out_trj - confirmed by
+    # reading the real s_chorus_trajectory_file property). Mirror that here:
+    # base "prd" -> trajectory dir "prd_fit_trj", cms "prd_fit-out.cms".
+    base = stem[:-4] if stem.endswith("-out") else stem
     fit_trj_dir = (
-        f"{parent}/{stem}_fit_trj" if out_file is None else f"{parent}/{out_file}"
+        f"{parent}/{base}_fit_trj" if out_file is None else f"{parent}/{out_file}"
     )
 
     ref_structure = settings.reference
@@ -122,20 +127,17 @@ def fit_desmond(settings: MDsettings, trj_file: str, out_file: str) -> None:
     traj.write_traj(fitted_frames, fit_trj_dir)
 
     # Pair a .cms with the new trajectory dir so downstream desmond tools
-    # (genrepresent/gencom/genfeature) can find it: read_cms_and_traj()
-    # locates the trajectory via the s_chorus_trajectory_file CT-level
-    # property embedded in the .cms, not by filename convention - confirmed
-    # by reading topo.find_traj_path()'s real source. Without updating this
-    # property, writing the original cms_model as-is would still point at
-    # the old (unfitted) trajectory directory.
+    # (genrepresent/gencom/genfeature) can find it.
+    from pacs.utils.desmond_io import fix_trajectory_property
+
     trj_dir_name = Path(fit_trj_dir).name
     fit_cms_path = (
-        f"{parent}/{trj_dir_name[:-4]}.cms"
+        f"{parent}/{trj_dir_name[:-4]}-out{ext}"
         if trj_dir_name.endswith("_trj")
-        else f"{fit_trj_dir}.cms"
+        else f"{fit_trj_dir}-out{ext}"
     )
-    cms_model.property["s_chorus_trajectory_file"] = trj_dir_name
     cms_model.write(fit_cms_path)
+    fix_trajectory_property(fit_cms_path, trj_dir_name)
 
     LOGGER.info(f"a new trajectory directory is saved as {fit_trj_dir}")
     LOGGER.info(f"a new cms file is saved as {fit_cms_path}")

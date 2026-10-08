@@ -259,7 +259,17 @@ def genrepresent_desmond(settings: MDsettings) -> None:
 
     repr_trj_dir = f"{repr_dir}/repr_complete_trj"
     traj.write_traj(combined_frames, repr_trj_dir)
-    cms_model.write(f"{repr_dir}/repr_complete.cms")
+    repr_cms_path = f"{repr_dir}/repr_complete.cms"
+    cms_model.write(repr_cms_path)
+    # cms_model is whatever cycle0's replica last set it to, so its embedded
+    # trajectory reference still points at that replica's own trajectory
+    # (e.g. prd-out_fit_trj), not repr_complete_trj - confirmed by a real
+    # run raising TrajectoryUnreadableError on readback. fix_trajectory_property
+    # patches the raw FULL_SYSTEM CT directly, since cms.Cms.write() does not
+    # persist a value set through the high-level property accessor.
+    from pacs.utils.desmond_io import fix_trajectory_property
+
+    fix_trajectory_property(repr_cms_path, "repr_complete_trj")
 
     LOGGER.info("genrepresent has been extracted successfully")
 
